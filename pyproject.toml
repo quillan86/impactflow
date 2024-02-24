@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "impactflow"
+version = "0.1.0"
+description = ""
+authors = ["Bill Dusch <bill@thebillistician.com>"]
+readme = "README.md"
+packages = [{include = "impactflow"}]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+networkx = "*"
+numpy = "*"
+scipy = "*"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
