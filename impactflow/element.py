@@ -1,4 +1,5 @@
-from typing import Callable, Optional
+from typing import Callable, Optional, Union
+
 
 class DecisionElement:
     _type = ""
@@ -25,14 +26,21 @@ class DecisionTail(DecisionElement):
     def __init__(self, name: str, inputs: list[str]):
         super().__init__(name)
         self.inputs = inputs
-        self.predictor: Optional[Callable] = None # Initialized to None
+        self.predictor: Optional[Union[Callable]] = None # Initialized to None
 
-    def fit(self, func: Callable):
+    def fit(self, predictor: Union[Callable]):
+        """
+        Fit the DecisionTail with a predictor, which can be a callable function or a scikit-learn model.
+        """
         # to do - get this working better?
-        self.predictor = func
+        self.predictor = predictor
         return self
 
     def predict(self, args: dict[str, int | float]):
+        """
+        Predict the outcome using the fitted predictor. The function handles both callable functions
+        and scikit-learn models.
+        """
         if self.predictor is None:
             raise ValueError("Predictor function not fitted yet.")
         if not all(key in args for key in self.inputs):
@@ -41,7 +49,7 @@ class DecisionTail(DecisionElement):
         # Extracting values in the order of self.inputs
         values = [args[input_name] for input_name in self.inputs]
 
-        # Calling the predictor with unpacked values
+        # Calling the callable predictor with unpacked values
         return self.predictor(*values)
 
 

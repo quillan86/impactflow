@@ -11,6 +11,8 @@ python = "^3.11"
 networkx = "*"
 numpy = "*"
 scipy = "*"
+scikit-learn = "*"
+SALib = "*"
 
 [build-system]
 requires = ["poetry-core"]

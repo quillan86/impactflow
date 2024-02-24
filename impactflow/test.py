@@ -25,6 +25,8 @@ model.add_element(outcome)
 
 print(model.element("Total Cost"))
 print(model.call("Profit")([1, 2, 3]))
+print(model.sensitivity("Profit"))
+
 print(model.optimize("Profit"))
 external1.value = 2000
 print(model.call("Profit")([1, 2, 3]))
