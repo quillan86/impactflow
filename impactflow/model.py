@@ -2,8 +2,59 @@ import numpy as np
 from scipy.optimize import basinhopping
 from SALib.sample import saltelli
 from SALib.analyze import sobol
+from typing import Union
 import networkx as nx
 from element import DecisionElement, DecisionHead, DecisionTail, Lever, Outcome, External
+from pymoo.optimize import minimize
+from pymoo.core.problem import ElementwiseProblem
+from pymoo.algorithms.moo.nsga2 import NSGA2
+from pymoo.operators.sampling.rnd import FloatRandomSampling
+from pymoo.operators.crossover.sbx import SBX
+from pymoo.operators.mutation.pm import PM
+
+
+class MultiObjectiveProblem(ElementwiseProblem):
+    def __init__(self, model, outcome_names, bounds, types: Union[str, list[str]] = "min"):
+        """
+        :param model: Instance of CausalDecisionModel.
+        :param outcome_names: List of names of outcomes to be optimized.
+        :param bounds: Bounds for each lever in the form of (min, max) tuples.
+        :param type: whether max or min.
+        """
+        self.model = model
+        self.outcome_names = outcome_names
+        self.types: str = type
+        super().__init__(n_var=len(bounds),
+                         n_obj=len(outcome_names),
+                         n_constr=0,
+                         xl=np.array([b[0] for b in bounds]),
+                         xu=np.array([b[1] for b in bounds]))
+
+    def _evaluate(self, x, out, *args, **kwargs):
+        def model_call(outcome_name, type_, x):
+            if type_ == 'max':
+                return lambda x: -self.model.call(outcome_name)(x)
+            elif type_ == 'min:':
+                return lambda x: self.model.call(outcome_name)(x)
+            else:
+                return lambda x: self.model.call(outcome_name)(x)
+
+        # Update lever values based on x
+        for i, lever_name in enumerate(self.model.lever_names):
+            self.model.element(lever_name).value = x[i]
+
+
+
+        # Calculate and return the outcomes
+        if self.types == 'max':
+            outcomes = [-self.model.call(outcome_name)(x) for outcome_name in self.outcome_names]
+        elif self.types == 'min':
+            outcomes = [self.model.call(outcome_name)(x) for outcome_name in self.outcome_names]
+        elif isinstance(self.types, list):
+            outcomes = [model_call(outcome_name, type_, x) for outcome_name, type_ in zip(self.outcome_names, self.types)]
+        else:
+            outcomes = [self.model.call(outcome_name)(x) for outcome_name in self.outcome_names]
+        out["F"] = np.array(outcomes)
 
 
 class CausalDecisionModel:
@@ -123,7 +174,7 @@ class CausalDecisionModel:
         # Return the callable function
         return outcome_function
 
-    def optimize(self, name: str, sign: str = "pos", niter: int = 100, random_seed: int = 42):
+    def optimize(self, outcome_name, type: str = 'max', n_generations=100):
         """
         Optimize the values of levers to maximize or minimize a specified outcome using
         the basinhopping algorithm.
@@ -134,32 +185,35 @@ class CausalDecisionModel:
         :param random_seed: The seed for the random number generator used in basinhopping.
         :return: The optimized value of the specified outcome.
         """
-        element = self.element(name)
-        if not isinstance(element, Outcome):
-            raise ValueError(f"Element {name} is not an Outcome - cannot optimize.")
-        if sign == "pos" or sign == "+":
-            outcome_func = lambda x: self.call(name)(x)
-        elif sign == "neg" or sign == "-":
-            outcome_func = lambda x: -self.call(name)(x)
-        else:
-            outcome_func = lambda x: self.call(name)(x)
+        return self.multi_optimize([outcome_name], types=type, n_generations=n_generations)
 
-        # Identify all levers that feed into the outcome, directly or indirectly
-        levers = [attrs["element"] for node, attrs in self.graph.nodes(data=True) if isinstance(attrs["element"], Lever)]
+    def multi_optimize(self, outcome_names, types: Union[str, list[str]] = 'max', n_generations=100):
+        """
+        Performs multi-objective optimization on specified outcomes.
 
-        xmin = [lever.bounds[0] for lever in levers]
-        xmax = [lever.bounds[1] for lever in levers]
-        bounds = [(low, high) for low, high in zip(xmin, xmax)]
-        x0 = np.array([lever.value for lever in levers])
-        minimizer_kwargs = dict(method="nelder-mead", bounds=bounds)
+        :param outcome_names: List of outcome names to optimize.
+        :param type: Whether to maximize (max) or minimize the outcomes.
+        :param n_generations: Number of generations for the optimization algorithm.
+        """
+        bounds = [self.element(lever_name).bounds for lever_name in self.lever_names]
+        problem = MultiObjectiveProblem(self, outcome_names, bounds, types=types)
 
-        # find global maximum with bounds
-        res = basinhopping(outcome_func, x0, niter=niter, minimizer_kwargs=minimizer_kwargs, seed=random_seed)
-        x = res.x
-        # set value
-        for value, lever in zip(x, levers):
-            lever.value = value
-        return self.call(name)(x)
+        algorithm = NSGA2(
+            pop_size=100,
+            n_offsprings=10,
+            sampling=FloatRandomSampling(),
+            crossover=SBX(prob=0.9, eta=15),
+            mutation=PM(eta=20),
+            eliminate_duplicates=True
+        )
+
+        res = minimize(problem,
+                       algorithm,
+                       ('n_gen', n_generations),
+                       verbose=False)
+
+        return res.X, res.F
+
 
     def sensitivity(self, outcome_name: str, n_samples=1024):
         """
