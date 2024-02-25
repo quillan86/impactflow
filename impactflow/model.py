@@ -75,7 +75,7 @@ class CausalDecisionModel:
         """
         return self.graph.nodes[name]["element"]
 
-    def call(self, outcome_name: str):
+    def call(self, name: str):
         """
         Create and return a callable function that computes the value of a specified outcome
         based on the current values of levers, passing arguments as a numpy array.
@@ -84,8 +84,8 @@ class CausalDecisionModel:
         :return: A function that takes a numpy array of lever values as input and returns the outcome value.
         """
         # Check if the outcome exists in the model
-        if outcome_name not in self.graph:
-            raise ValueError(f"Outcome {outcome_name} does not exist in the model.")
+        if name not in self.graph:
+            raise ValueError(f"Outcome {name} does not exist in the model.")
 
         # Identify all levers that feed into the outcome, directly or indirectly
         levers = self.levers
@@ -124,7 +124,7 @@ class CausalDecisionModel:
                     raise ValueError(f"Unsupported node type for {node_name}")
 
             # Compute and return the outcome
-            return compute_value(outcome_name)
+            return compute_value(name)
 
         # Return the callable function
         return outcome_function
