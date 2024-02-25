@@ -40,6 +40,12 @@ class CausalDecisionModel:
         return result
 
     @property
+    def outcomes(self):
+        result = [attrs["element"] for _, attrs in self.graph.nodes(data=True) if
+                    isinstance(attrs["element"], Outcome)]
+        return result
+
+    @property
     def external_names(self) -> list[str]:
         levers = self.levers
         return [lever.name for lever in levers]
@@ -236,3 +242,73 @@ class CausalDecisionModel:
         ST = Si['ST']
         return S1, ST
 
+    def validate(self):
+        """
+        Validates the Causal Decision Model to ensure its integrity and readiness for decision analysis.
+        This method performs several critical checks:
+
+        1. Checks that there is at least one Lever in the model. Levers are crucial as they represent
+           the decision variables that can be manipulated to influence outcomes.
+
+        2. Verifies the existence of at least one Outcome. Outcomes are the variables of interest that
+           the decision model aims to influence or optimize, and their presence is essential for the model's purpose.
+
+        3. Ensures all inputs to DecisionTail elements (which represent decision nodes with dependencies)
+           come from existing elements within the model. This check prevents references to undefined elements,
+           ensuring the model's logical consistency.
+
+        4. Detects cycles within the directed graph that represents the model. Cycles indicate circular dependencies,
+           which are not allowed as they can cause infinite loops and disrupt the model's logic.
+
+        5. Checks for unconnected components within the graph. A fully connected model is necessary to ensure
+           that changes in levers can influence all outcomes, making the model coherent and integrated.
+
+        6. Verifies that each outcome is reachable from at least one lever, ensuring the model's
+           practicality by confirming that levers can indeed influence outcomes.
+
+        7. Confirms that every lever in the model can potentially affect at least one outcome, ensuring all
+           elements of the model contribute to its decision-making capabilities.
+
+        If any of these checks fail, a ValueError is raised with a message explaining the specific issue.
+        This method ensures the model's structural and logical integrity before it's used for analysis or optimization.
+        """
+
+        # Check for at least one lever
+        if len(self.levers) == 0:
+            raise ValueError("The model must contain at least one Lever.")
+
+        # Check for at least one outcome
+        outcomes = [attrs["element"] for _, attrs in self.graph.nodes(data=True) if isinstance(attrs["element"], Outcome)]
+        if len(outcomes) == 0:
+            raise ValueError("The model must contain at least one Outcome.")
+
+        # Ensure all inputs come from an existing decision element
+        for node, attrs in self.graph.nodes(data=True):
+            if isinstance(attrs["element"], DecisionTail):
+                for input_name in attrs["element"].inputs:
+                    if input_name not in self.graph:
+                        raise ValueError(f"Input {input_name} for {node} does not exist in the model.")
+
+        # Detect cycles within the model's graph to ensure no circular dependencies.
+        if not nx.is_directed_acyclic_graph(self.graph):
+            raise ValueError("The model contains cycles, indicating circular dependencies.")
+
+        if nx.number_weakly_connected_components(self.graph) > 1:
+            raise ValueError("The model has unconnected components.")
+
+        # Check for unconnected components within the graph.
+        if nx.number_weakly_connected_components(self.graph) > 1:
+            raise ValueError("The model has unconnected components.")
+
+        # Check connectivity between levers and outcomes
+        for outcome in outcomes:
+            paths = nx.single_source_shortest_path(self.graph.reverse(), outcome.name)
+            if not any(lever.name in paths for lever in self.levers):
+                raise ValueError(f"Outcome {outcome.name} is not reachable from any lever.")
+
+        # Ensure every decision element can potentially influence at least one outcome.
+        for lever in self.levers:
+            if not any(nx.has_path(self.graph, lever.name, outcome.name) for outcome in self.outcomes):
+                raise ValueError(f"Lever {lever.name} does not influence any outcomes.")
+
+        return True

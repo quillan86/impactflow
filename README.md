@@ -36,7 +36,7 @@ from impactflow import External
 external1 = External("CPC", 1.16, [1.00, 2.00])
 ```
 The next step are adding intermediates, which are decision elements that act in between levers/externals and outcomes.
-They don't have default values or bounds, but rather are linked to earlier elements, and
+They don't have default values or bounds, but rather are linked to earlier elements.
 ```angular2html
 from impactflow import Intermediate
 itm1 = Intermediate("Conversion Rate", ["Usability", "Product Price"])
@@ -79,7 +79,7 @@ model.element("Usability").value = 80.0 # value of lever changed! This will prop
 You can `predict` a specific intermediate or outcome to get the value of the element relative to an input. Meanwhile, you can `call` an intermediate or outcome to do the same, but the inputs are the levers of the model rather than the immediate inputs to the element.
 ```angular2html
 revenue = model.element("Revenue").predict({"Orders": 10000.0, "Product Price": 10.0})
-revenue = model.eleemnt("Revenue").call([2750000.00, 75.0, 10.00]}
+revenue = model.element("Revenue").call([2750000.00, 75.0, 10.00]}
 ```
 You can optimize over a single or multiple outcomes:
 ```angular2html
