@@ -1,60 +1,15 @@
 import numpy as np
-from scipy.optimize import basinhopping
 from SALib.sample import saltelli
 from SALib.analyze import sobol
 from typing import Union
 import networkx as nx
-from element import DecisionElement, DecisionHead, DecisionTail, Lever, Outcome, External
 from pymoo.optimize import minimize
-from pymoo.core.problem import ElementwiseProblem
 from pymoo.algorithms.moo.nsga2 import NSGA2
 from pymoo.operators.sampling.rnd import FloatRandomSampling
 from pymoo.operators.crossover.sbx import SBX
 from pymoo.operators.mutation.pm import PM
-
-
-class MultiObjectiveProblem(ElementwiseProblem):
-    def __init__(self, model, outcome_names, bounds, types: Union[str, list[str]] = "min"):
-        """
-        :param model: Instance of CausalDecisionModel.
-        :param outcome_names: List of names of outcomes to be optimized.
-        :param bounds: Bounds for each lever in the form of (min, max) tuples.
-        :param type: whether max or min.
-        """
-        self.model = model
-        self.outcome_names = outcome_names
-        self.types: str = type
-        super().__init__(n_var=len(bounds),
-                         n_obj=len(outcome_names),
-                         n_constr=0,
-                         xl=np.array([b[0] for b in bounds]),
-                         xu=np.array([b[1] for b in bounds]))
-
-    def _evaluate(self, x, out, *args, **kwargs):
-        def model_call(outcome_name, type_, x):
-            if type_ == 'max':
-                return lambda x: -self.model.call(outcome_name)(x)
-            elif type_ == 'min:':
-                return lambda x: self.model.call(outcome_name)(x)
-            else:
-                return lambda x: self.model.call(outcome_name)(x)
-
-        # Update lever values based on x
-        for i, lever_name in enumerate(self.model.lever_names):
-            self.model.element(lever_name).value = x[i]
-
-
-
-        # Calculate and return the outcomes
-        if self.types == 'max':
-            outcomes = [-self.model.call(outcome_name)(x) for outcome_name in self.outcome_names]
-        elif self.types == 'min':
-            outcomes = [self.model.call(outcome_name)(x) for outcome_name in self.outcome_names]
-        elif isinstance(self.types, list):
-            outcomes = [model_call(outcome_name, type_, x) for outcome_name, type_ in zip(self.outcome_names, self.types)]
-        else:
-            outcomes = [self.model.call(outcome_name)(x) for outcome_name in self.outcome_names]
-        out["F"] = np.array(outcomes)
+from element import DecisionElement, DecisionHead, DecisionTail, Lever, Outcome, External
+from optimize import MultiObjectiveProblem
 
 
 class CausalDecisionModel:
@@ -212,7 +167,7 @@ class CausalDecisionModel:
                        ('n_gen', n_generations),
                        verbose=False)
 
-        return res.X, res.F
+        return res.X, res.F[0]
 
 
     def sensitivity(self, outcome_name: str, n_samples=1024):
