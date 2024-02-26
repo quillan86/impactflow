@@ -50,6 +50,19 @@ class CausalDecisionModel:
         levers = self.levers
         return [lever.name for lever in levers]
 
+    @property
+    def fidelity(self):
+        elements = [attrs["element"] for _, attrs in self.graph.nodes(data=True) if
+                    isinstance(attrs["element"], DecisionTail)]
+        result = []
+        for element in elements:
+            if element.predictor is None:
+                result.append(0)
+            else:
+                result.append(element.predictor.fidelity)
+        print(result)
+        return np.mean(result)
+
     def add_element(self, element: DecisionElement):
         """
         Add a single element (node) to the model's graph. If the element is a DecisionTail,
@@ -173,8 +186,7 @@ class CausalDecisionModel:
                        ('n_gen', n_generations),
                        verbose=False)
 
-        return res.X, res.F[0]
-
+        return res.X
 
     def sensitivity(self, outcome_name: str, n_samples=1024):
         """

@@ -1,4 +1,4 @@
-from model import CausalDecisionModel
+from cdm import CausalDecisionModel
 from element import Lever, Outcome, Intermediate, External
 
 lever1 = Lever("Marketing Spend", 500.00, [0.00, 2000.00])
@@ -23,11 +23,13 @@ model.add_element(external1)
 model.add_elements([itm1, itm2, itm3, itm4, itm5, itm6, itm7])
 model.add_element(outcome)
 
+print(model.validate())
 print(model.element("Total Cost"))
 print(model.call("Profit")([1, 2, 3]))
 print(model.sensitivity("Profit"))
-
-print(model.multi_optimize(["Profit"]))
+x, y, z = model.multi_optimize(["Profit"])
+print(x, y, z)
+print(model.fidelity)
 
 print(model.optimize("Profit"))
 external1.value = 2000

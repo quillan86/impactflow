@@ -1,4 +1,6 @@
 from typing import Callable, Optional, Union
+from sklearn.base import BaseEstimator
+from dm import ElementModel
 
 
 class DecisionElement:
@@ -26,14 +28,14 @@ class DecisionTail(DecisionElement):
     def __init__(self, name: str, inputs: list[str]):
         super().__init__(name)
         self.inputs = inputs
-        self.predictor: Optional[Union[Callable]] = None # Initialized to None
+        self.predictor: Optional[ElementModel] = None # Initialized to None
 
-    def fit(self, predictor: Union[Callable]):
+    def fit(self, obj: Union[Callable, BaseEstimator], kind: str = "function"):
         """
         Fit the DecisionTail with a predictor, which can be a callable function or a scikit-learn model.
         """
         # to do - get this working better?
-        self.predictor = predictor
+        self.predictor = ElementModel(obj, kind=kind)
         return self
 
     def predict(self, args: dict[str, int | float]):
@@ -47,10 +49,9 @@ class DecisionTail(DecisionElement):
             raise ValueError("Not all inputs are provided in args.")
 
         # Extracting values in the order of self.inputs
-        values = [args[input_name] for input_name in self.inputs]
+        values: list[int | float] = [args[input_name] for input_name in self.inputs]
 
-        # Calling the callable predictor with unpacked values
-        return self.predictor(*values)
+        return self.predictor.predict(values)
 
 
 class Outcome(DecisionTail):
