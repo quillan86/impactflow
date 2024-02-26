@@ -1,5 +1,5 @@
-from cdm import CausalDecisionModel
-from element import Lever, Outcome, Intermediate, External
+from impactflow.cdm import CausalDecisionModel
+from impactflow.element import Lever, Outcome, Intermediate, External
 
 lever1 = Lever("Marketing Spend", 500.00, [0.00, 2000.00])
 lever2 = Lever("Sales Price", 8.25, [0.04, 15.00])

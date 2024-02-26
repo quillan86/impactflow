@@ -8,8 +8,8 @@ from pymoo.algorithms.moo.nsga2 import NSGA2
 from pymoo.operators.sampling.rnd import FloatRandomSampling
 from pymoo.operators.crossover.sbx import SBX
 from pymoo.operators.mutation.pm import PM
-from element import DecisionElement, DecisionHead, DecisionTail, Lever, Outcome, External
-from optimize import MultiObjectiveProblem
+from .element import DecisionElement, DecisionHead, DecisionTail, Lever, Outcome, External
+from .optimize import MultiObjectiveProblem
 
 
 class CausalDecisionModel:
