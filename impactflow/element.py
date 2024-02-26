@@ -1,6 +1,6 @@
 from typing import Callable, Optional, Union
 from sklearn.base import BaseEstimator
-from dm import ElementModel
+from em import ElementModel
 
 
 class DecisionElement:
